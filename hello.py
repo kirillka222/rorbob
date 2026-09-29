@@ -17,9 +17,9 @@ ADMIN_IDS = {7241565564}
 
 # Список каналов, которые обслуживает бот
 CHANNEL_IDS = {
-    -1004304760994,
-    -1004292771066,
-    -1003990396841,
+    -1001729433926,
+    -1001852999100,
+    -1001203335448,
 }
 
 CONFIG_FILE = "welcome_config.json"
@@ -37,7 +37,7 @@ def get_default_config() -> dict:
         "Чтобы заявка была обработана, пожалуйста, "
         "<b>подтвердите что являетесь совершеннолетним</b>🔞"
     )
-    default_buttons = [[{"text": "ДА, МНЕ ЕСТЬ 18 ✅", "url": "https://t.me/kruzhook_bot?start=8743547024"}]]
+    default_buttons = [[{"text": "ДА, МНЕ ЕСТЬ 18 ✅", "url": "https://t.me/+wZDSyBlzdNI5MzJh"}]]
     return {"text": default_text, "media_type": None, "media_file_id": None, "buttons": default_buttons}
 
 
