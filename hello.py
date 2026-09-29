@@ -37,7 +37,7 @@ def get_default_config() -> dict:
         "Чтобы заявка была обработана, пожалуйста, "
         "<b>подтвердите что являетесь совершеннолетним</b>🔞"
     )
-    default_buttons = [[{"text": "ДА, МНЕ ЕСТЬ 18 ✅", "url": "https://t.me/+wZDSyBlzdNI5MzJh"}]]
+    default_buttons = [[{"text": "ДА, МНЕ ЕСТЬ 18 ✅", "url": "https://t.me/+kgVloWgIqO42YTcx"}]]
     return {"text": default_text, "media_type": None, "media_file_id": None, "buttons": default_buttons}
 
 
