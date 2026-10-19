@@ -30,7 +30,7 @@ CONFIG_FILE = "welcome_config.json"
 SENT_FILE = "sent_users.json"
 
 SLOTS = (1, 2)  # два приветственных сообщения
-DELAY_BETWEEN = 0.7  # пауза между первым и вторым сообщением, сек
+DELAY_BETWEEN = 20  # пауза между первым и вторым сообщением, сек
 
 bot = Bot(token=BOT_TOKEN)
 dp = Dispatcher(storage=MemoryStorage())
