@@ -24,6 +24,7 @@ CHANNEL_IDS = {
     -1001729433926,
     -1001852999100,
     -1001203335448,
+    -1001464255103,
 }
 
 CONFIG_FILE = "welcome_config.json"
