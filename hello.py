@@ -18,7 +18,7 @@ log = logging.getLogger("welcome")
 
 # Токен берётся ТОЛЬКО из переменной окружения BOT_TOKEN (задайте её в настройках хостинга).
 # Не вписывайте токен в код, если код лежит на GitHub!
-BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
+BOT_TOKEN = os.getenv("BOT_TOKEN", "8550210786:AAHWjiDYi2VjppatfmqWooPCqYLolRqywIA").strip()
 if not BOT_TOKEN:
     raise SystemExit("Не задана переменная окружения BOT_TOKEN")
 
