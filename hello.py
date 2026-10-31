@@ -5,13 +5,22 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.types import InlineKeyboardMarkup, InlineKeyboardButton
 from aiogram.enums import ParseMode
+from aiogram.client.session.aiohttp import AiohttpSession
 import asyncio
 import json
 import os
 import html
+import socket
+import logging
 
-# Токен берётся из переменной окружения BOT_TOKEN (или впишите сюда новый токен)
-BOT_TOKEN = os.getenv("BOT_TOKEN", "ВСТАВЬТЕ_НОВЫЙ_ТОКЕН")
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
+log = logging.getLogger("welcome")
+
+# Токен берётся ТОЛЬКО из переменной окружения BOT_TOKEN (задайте её в настройках хостинга).
+# Не вписывайте токен в код, если код лежит на GitHub!
+BOT_TOKEN = os.getenv("BOT_TOKEN", "").strip()
+if not BOT_TOKEN:
+    raise SystemExit("Не задана переменная окружения BOT_TOKEN")
 
 # ID администраторов, которым разрешено настраивать приветствие
 ADMIN_IDS = {7241565564}
@@ -33,7 +42,11 @@ SENT_FILE = "sent_users.json"
 SLOTS = (1, 2)  # два приветственных сообщения
 DELAY_BETWEEN = 20  # пауза между первым и вторым сообщением, сек
 
-bot = Bot(token=BOT_TOKEN)
+# Сессия: подключение только по IPv4 (частая причина таймаутов в Docker) и увеличенный таймаут
+session = AiohttpSession(timeout=60)
+session._connector_init["family"] = socket.AF_INET
+
+bot = Bot(token=BOT_TOKEN, session=session)
 dp = Dispatcher(storage=MemoryStorage())
 
 
@@ -152,7 +165,8 @@ async def cmd_setwelcome(message: types.Message, state: FSMContext, command: Com
             "/setwelcome 2 — второе сообщение\n\n"
             "Другие команды:\n"
             "/previewwelcome — показать оба (или /previewwelcome 1, /previewwelcome 2)\n"
-            "/delwelcome 2 — выключить второе сообщение"
+            "/delwelcome 2 — выключить второе сообщение\n"
+            "/resetsent — очистить список тех, кому уже отправляли (для теста)"
         )
         return
 
@@ -291,10 +305,23 @@ async def cmd_preview(message: types.Message, command: CommandObject):
     slot = parse_slot(command)
     welcomes = config["welcomes"]
 
-    if slot is not None:
-        await send_one(message.chat.id, welcomes[slot - 1], message.from_user.full_name)
-    else:
-        await send_all(message.chat.id, config, message.from_user.full_name)
+    try:
+        if slot is not None:
+            await send_one(message.chat.id, welcomes[slot - 1], message.from_user.full_name)
+        else:
+            await send_all(message.chat.id, config, message.from_user.full_name)
+    except Exception as e:
+        log.exception("Ошибка предпросмотра")
+        await message.answer(f"Ошибка при отправке: {html.escape(str(e))}")
+
+
+@dp.message(Command("resetsent"))
+async def cmd_resetsent(message: types.Message):
+    if message.from_user.id not in ADMIN_IDS:
+        return
+    sent_users.clear()
+    save_sent(sent_users)
+    await message.answer("Список очищен — бот снова отправит приветствие всем, кто подаст заявку.")
 
 
 # ---------- Отправка приветствий ----------
@@ -332,26 +359,46 @@ async def send_all(chat_id: int, config: dict, user_name: str = ""):
 
 @dp.chat_join_request()
 async def handle_join_request(request: types.ChatJoinRequest):
+    log.info("Заявка: chat=%s (%s), user=%s",
+             request.chat.id, request.chat.title, request.from_user.id)
+
     if request.chat.id not in CHANNEL_IDS:
+        log.warning("Канал %s нет в CHANNEL_IDS — пропускаю", request.chat.id)
         return
 
     user_id = request.from_user.id
     if user_id in sent_users:
-        return  # уже отправляли этому пользователю
+        log.info("Пользователю %s уже отправляли — пропускаю", user_id)
+        return
 
     config = load_config()
     try:
-        await send_all(user_id, config, user_name=request.from_user.full_name)
+        await send_all(request.user_chat_id, config, user_name=request.from_user.full_name)
         sent_users.add(user_id)
         save_sent(sent_users)
+        log.info("Приветствие отправлено пользователю %s", user_id)
     except Exception:
-        pass  # например, пользователь заблокировал бота
+        log.exception("Не удалось отправить приветствие пользователю %s", user_id)
 
     # approve/decline не вызываем — решение принимаете вручную в приложении
 
 
+# ---------- Запуск ----------
+
 async def main():
-    await dp.start_polling(bot)
+    while True:
+        try:
+            me = await bot.get_me()
+            log.info("Бот запущен: @%s", me.username)
+            await bot.delete_webhook(drop_pending_updates=False)
+            await dp.start_polling(
+                bot,
+                allowed_updates=["message", "chat_join_request"],
+            )
+            break
+        except Exception:
+            log.exception("Не удалось подключиться к Telegram, повтор через 15 сек")
+            await asyncio.sleep(15)
 
 
 if __name__ == "__main__":
